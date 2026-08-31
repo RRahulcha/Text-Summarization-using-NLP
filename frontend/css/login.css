@@ -1,0 +1,12 @@
+/* =========================================================
+   login.css — page-specific styling for login.html
+   (Shared auth shell lives in style.css)
+========================================================= */
+
+.auth-card {
+  border-top: 3px solid var(--accent-blue);
+}
+
+#infoAlert.is-visible {
+  display: block;
+}

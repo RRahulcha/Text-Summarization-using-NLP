@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard · NLP Text Summarizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+<header class="dash-topbar">
+  <div class="container dash-topbar__inner">
+    <a href="index.html" class="brand">
+      <span class="brand__mark">⟨NLP⟩</span> Text Summarizer
+    </a>
+    <span class="dash-topbar__divider">/</span>
+    <span class="dash-topbar__label">Dashboard</span>
+
+    <div class="dash-topbar__spacer"></div>
+
+    <span class="dash-user" id="dashUserName">—</span>
+    <button class="btn btn-danger btn-sm" id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<main class="container dash-main">
+
+  <div id="dashAlert" class="alert alert--error" role="alert"></div>
+
+  <section class="summarize-grid">
+
+    <!-- ============ ORIGINAL TEXT (LEFT) ============ -->
+    <div class="panel card" id="originalPanel">
+      <div class="panel__header">
+        <h2>Original Text</h2>
+        <span class="chip chip--blue mono" id="originalCount">0 words · 0 chars</span>
+      </div>
+
+      <textarea
+        id="originalText"
+        class="panel__textarea"
+        placeholder="Paste or type the text you want to summarize..."
+        spellcheck="false"
+      ></textarea>
+
+      <div class="panel__controls">
+        <div class="ratio-control">
+          <label for="summaryRatio">Summary length</label>
+          <select id="summaryRatio">
+            <option value="0.2">Short (20%)</option>
+            <option value="0.3" selected>Balanced (30%)</option>
+            <option value="0.5">Detailed (50%)</option>
+          </select>
+        </div>
+        <div class="panel__buttons">
+          <button class="btn btn-ghost" id="clearBtn" type="button">Clear</button>
+          <button class="btn btn-primary" id="summarizeBtn" type="button">Summarize Text</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SUMMARY TEXT (RIGHT) ============ -->
+    <div class="panel card" id="summaryPanel">
+      <div class="panel__header">
+        <h2>Summary Text</h2>
+        <span class="chip chip--amber mono" id="summaryCount">0 words</span>
+      </div>
+
+      <div class="panel__output" id="summaryOutput">
+        <p class="panel__placeholder" id="summaryPlaceholder">
+          Your summary will appear here once you click “Summarize Text.”
+        </p>
+      </div>
+
+      <div class="panel__controls panel__controls--end">
+        <div class="panel__buttons">
+          <button class="btn btn-ghost btn-sm" id="copyBtn" type="button" disabled>Copy</button>
+          <button class="btn btn-outline btn-sm" id="downloadBtn" type="button" disabled>Download Summary</button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ NLP ANALYSIS (collapsible) ============ -->
+  <section class="analysis card" id="analysisSection" hidden>
+    <button class="analysis__toggle" id="analysisToggle" type="button" aria-expanded="false">
+      <span>View NLP Analysis</span>
+      <span class="analysis__chevron">▾</span>
+    </button>
+
+    <div class="analysis__body" id="analysisBody" hidden>
+
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-tab="scores" role="tab">Sentence Scores</button>
+        <button class="tab" data-tab="nltk" role="tab">NLTK</button>
+        <button class="tab" data-tab="spacy" role="tab">spaCy</button>
+      </div>
+
+      <!-- SENTENCE SCORES -->
+      <div class="tab-panel is-active" data-panel="scores">
+        <table class="data-table" id="scoresTable">
+          <thead><tr><th>Sentence</th><th>Score</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- NLTK -->
+      <div class="tab-panel" data-panel="nltk">
+        <div class="analysis-grid">
+          <div>
+            <h4>Sentences</h4>
+            <ol class="data-list" id="nltkSentences"></ol>
+          </div>
+          <div>
+            <h4>Tokens</h4>
+            <div class="chip-cloud" id="nltkTokens"></div>
+          </div>
+          <div>
+            <h4>POS Tags</h4>
+            <div class="chip-cloud" id="nltkPos"></div>
+          </div>
+          <div>
+            <h4>Named Entities</h4>
+            <div class="chip-cloud" id="nltkEntities"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPACY -->
+      <div class="tab-panel" data-panel="spacy">
+        <div class="analysis-grid">
+          <div>
+            <h4>Sentences</h4>
+            <ol class="data-list" id="spacySentences"></ol>
+          </div>
+          <div>
+            <h4>Tokens</h4>
+            <div class="chip-cloud" id="spacyTokens"></div>
+          </div>
+          <div>
+            <h4>POS Tags</h4>
+            <div class="chip-cloud" id="spacyPos"></div>
+          </div>
+          <div>
+            <h4>Named Entities</h4>
+            <div class="chip-cloud" id="spacyEntities"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

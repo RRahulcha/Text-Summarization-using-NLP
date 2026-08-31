@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account · NLP Text Summarizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/register.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="navbar__inner">
+    <a href="index.html" class="brand">
+      <span class="brand__mark">⟨NLP⟩</span> Text Summarizer
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="index.html#about">About</a></li>
+        <li><a href="login.html">Login</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main class="auth-page">
+  <div class="container auth-page__inner">
+    <div class="auth-card card">
+      <p class="eyebrow">Create account</p>
+      <h1>Join NLP Text Summarizer</h1>
+      <p class="auth-card__desc">Set up an account to start summarizing your own text.</p>
+
+      <div id="formAlert" class="alert alert--error" role="alert"></div>
+
+      <form id="registerForm" novalidate>
+        <div class="form-field">
+          <label for="fullName">Full name</label>
+          <input type="text" id="fullName" name="fullName" autocomplete="name" required>
+          <span class="field-error" id="fullNameError"></span>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="email" required>
+          <span class="field-error" id="emailError"></span>
+        </div>
+
+        <div class="form-field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" autocomplete="username" required>
+          <span class="field-error" id="usernameError"></span>
+        </div>
+
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" autocomplete="new-password" required>
+          <span class="field-hint">At least 8 characters.</span>
+          <span class="field-error" id="passwordError"></span>
+        </div>
+
+        <div class="form-field">
+          <label for="confirmPassword">Confirm password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required>
+          <span class="field-error" id="confirmPasswordError"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="registerSubmit">Register</button>
+      </form>
+
+      <p class="auth-card__switch">
+        Already have an account? <a href="login.html">Login</a>
+      </p>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <span class="brand"><span class="brand__mark">⟨NLP⟩</span> Text Summarizer</span>
+    <p class="footer__note">Built with NLTK, spaCy &amp; FastAPI — a college NLP project.</p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+<script src="js/register.js"></script>
+</body>
+</html>

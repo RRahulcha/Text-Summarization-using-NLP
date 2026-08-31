@@ -1,0 +1,13 @@
+/* =========================================================
+   register.css — page-specific styling for register.html
+   (Shared auth shell lives in style.css)
+========================================================= */
+
+.auth-card {
+  border-top: 3px solid var(--accent);
+}
+
+#registerForm .form-field:nth-child(4) input,
+#registerForm .form-field:nth-child(5) input {
+  letter-spacing: 0.02em;
+}

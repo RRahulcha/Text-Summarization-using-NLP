@@ -1,0 +1,27 @@
+# ===== Python =====
+backend/venv/ 
+backend/env/
+backend/.venv/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== SQLite database =====
+backend/users.db
+*.db
+
+# ===== NLTK downloaded data =====
+backend/users.db
+nltk_data/
+
+# ===== OS / editor junk =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===== Logs =====
+*.log

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP Text Summarizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <div class="navbar__inner">
+    <a href="index.html" class="brand">
+      <span class="brand__mark">⟨NLP⟩</span> Text Summarizer
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="login.html">Login</a></li>
+        <li><a href="register.html" class="btn btn-primary btn-sm">Get started</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="container hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow">Extractive summarization · NLTK + spaCy</p>
+        <h1>NLP Text Summarizer</h1>
+        <p class="hero__subtitle">Summarize long text using Natural Language Processing.</p>
+        <p class="hero__desc">
+          Paste an article, report, or transcript and get a concise, faithful summary —
+          built from sentences your text already contains, chosen by a hybrid scoring
+          pipeline across word frequency, part-of-speech, and named entities.
+        </p>
+        <div class="hero__cta">
+          <a href="register.html" class="btn btn-primary">Create free account</a>
+          <a href="login.html" class="btn btn-ghost">I already have an account</a>
+        </div>
+      </div>
+
+      <div class="hero__demo card" aria-hidden="true">
+        <p class="hero__demo-label mono">annotation preview</p>
+        <p class="hero__sentence" id="annotatedSentence">
+          <!-- populated by main.js -->
+        </p>
+        <div class="hero__demo-footer">
+          <span class="chip chip--amber">selected sentence</span>
+          <span class="chip chip--blue">NER: GPE</span>
+          <span class="chip chip--accent">POS: NNP</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT ============ -->
+  <section id="about" class="section">
+    <div class="container">
+      <p class="eyebrow">How it works</p>
+      <h2>Every summary is built from your own sentences</h2>
+      <p class="section__lead">
+        This tool doesn't paraphrase or invent new sentences. It scores every sentence
+        in your text using a hybrid of NLTK and spaCy signals, then selects and
+        reorders the most important ones into a summary you can trust and verify
+        against the source.
+      </p>
+
+      <div class="steps">
+        <div class="step card">
+          <span class="chip chip--blue">01</span>
+          <h3>Tokenize &amp; tag</h3>
+          <p>Sentences and words are tokenized with NLTK and spaCy, then tagged for part of speech and named entities.</p>
+        </div>
+        <div class="step card">
+          <span class="chip chip--blue">02</span>
+          <h3>Score every sentence</h3>
+          <p>Word frequency, POS weight, entity weight, position, and length combine into one hybrid importance score.</p>
+        </div>
+        <div class="step card">
+          <span class="chip chip--blue">03</span>
+          <h3>Select &amp; reorder</h3>
+          <p>The highest-scoring sentences are selected, then restored to their original order for a coherent summary.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section id="features" class="section section--alt">
+    <div class="container">
+      <p class="eyebrow">Under the hood</p>
+      <h2>Two NLP engines, one hybrid score</h2>
+
+      <div class="features-grid">
+        <div class="feature card">
+          <span class="chip chip--accent">NLTK</span>
+          <h3>Classical NLP pipeline</h3>
+          <p>Sentence &amp; word tokenization, POS tagging, and chunked named-entity recognition using NLTK's tried-and-tested toolkit.</p>
+        </div>
+        <div class="feature card">
+          <span class="chip chip--accent">spaCy</span>
+          <h3>Statistical language model</h3>
+          <p>The <code>en_core_web_sm</code> pipeline supplies fast sentence boundaries, POS tags, and entity spans that cross-check NLTK's output.</p>
+        </div>
+        <div class="feature card">
+          <span class="chip chip--accent">Extractive</span>
+          <h3>Extractive summarization</h3>
+          <p>Sentences are ranked with a hybrid score — frequency, POS weight, entity weight, position, and length — and the top-ranked ones form your summary.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="cta">
+    <div class="container cta__inner">
+      <h2>Try it on your own text</h2>
+      <p>Create a free account and summarize your first document in under a minute.</p>
+      <a href="register.html" class="btn btn-primary">Get started</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <span class="brand"><span class="brand__mark">⟨NLP⟩</span> Text Summarizer</span>
+    <p class="footer__note">Built with NLTK, spaCy &amp; FastAPI — a college NLP project.</p>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
