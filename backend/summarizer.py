@@ -9,7 +9,7 @@ from nltk import ne_chunk, pos_tag
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tree import Tree
-
+import transformers as _transformers  # noqa: F401 - optional, only used if transformer models are requested
 # EXCEPTIONS
 
 class SpacyModelMissingError(RuntimeError):
@@ -433,6 +433,32 @@ def summarizer(text, summary_ratio=0.30):
 class TransformerModelError(RuntimeError):
     """Raised when a transformer model/tokenizer fails to load or run."""
 
+def get_transformer_status():
+    """Return quick diagnostic info about the transformers package and runtime environment."""
+    info = {
+        "installed": False,
+        "module": None,
+        "version": None,
+        "torch_installed": False,
+        "error": None,
+    }
+
+    try:
+        import transformers
+        info["installed"] = True
+        info["module"] = getattr(transformers, "__file__", None)
+        info["version"] = getattr(transformers, "__version__", None)
+    except Exception as exc:  # pragma: no cover - diagnostic only
+        info["error"] = str(exc)
+        return info
+
+    try:
+        import torch
+        info["torch_installed"] = True
+    except Exception:  # pragma: no cover - diagnostic only
+        pass
+
+    return info
 
 _TRANSFORMER_MODEL_CACHE = {}
 

@@ -199,6 +199,7 @@ class SummarizeResponse(BaseModel):
     spacy_entities: list = []
     sentence_scores: dict = {}
     spacy_tokens: list = []
+    transformer_status: dict = {}
     error: Optional[str] = None
 
 
@@ -295,7 +296,11 @@ def on_startup():
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "NLP Text Summarizer API"}
+    return {
+        "status": "ok",
+        "service": "NLP Text Summarizer API",
+        "transformer_status": nlp_summarizer.get_transformer_status(),
+    }
 
 
 # =========================================================
@@ -418,6 +423,7 @@ def summarize(
                 output_format=payload.output_format,
                 user_request=payload.user_request.strip(),
             )
+        result["transformer_status"] = nlp_summarizer.get_transformer_status()
     except nlp_summarizer.SpacyModelMissingError as exc:
         logger.error("spaCy is not ready: %s", exc)
         raise HTTPException(
