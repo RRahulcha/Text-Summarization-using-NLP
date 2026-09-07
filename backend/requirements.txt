@@ -3,6 +3,11 @@ uvicorn[standard]==0.30.6
 pydantic[email]==2.9.2
 nltk==3.9.1
 spacy==3.7.5
+numpy==1.26.4
+scipy==1.13.1
+scikit-learn==1.5.2
+torch==2.5.1
+transformers==4.46.3
 bcrypt==4.2.0
 python-multipart==0.0.9
 httpx==0.28.1

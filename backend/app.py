@@ -1,6 +1,5 @@
 """
 app.py
-=========================================================
 FastAPI application for the NLP Text Summarizer website.
 
 Responsibilities:
@@ -16,16 +15,16 @@ Responsibilities:
 All summarization logic itself lives in summarizer.py and
 is untouched here; this file is purely the API + auth layer
 around it.
-=========================================================
 """
 
 import re
 import secrets
 import sqlite3
+import logging
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import bcrypt
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -33,6 +32,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 import summarizer as nlp_summarizer
+
+logger = logging.getLogger("uvicorn.error")
 
 # =========================================================
 # CONFIG
@@ -164,6 +165,10 @@ def normalize_identifier(value: str) -> str:
 class SummarizeRequest(BaseModel):
     text: str = Field(..., min_length=1)
     summary_ratio: float = Field(0.30, ge=0.05, le=0.9)
+    model: Literal["hybrid", "bert", "t5", "gpt2"] = "hybrid"
+    length: Literal["short", "balanced", "detailed"] = "balanced"
+    output_format: Literal["text", "notes"] = "text"
+    user_request: str = Field("", max_length=500)
 
 
 class UserOut(BaseModel):
@@ -181,15 +186,19 @@ class AuthResponse(BaseModel):
 
 class SummarizeResponse(BaseModel):
     summary: str
-    nltk_sentences: list
-    spacy_sentences: list
-    nltk_tokens: list
-    spacy_pos: list
-    nltk_pos: list
-    nltk_entities: list
-    spacy_entities: list
-    sentence_scores: dict
-    spacy_tokens: list
+    model: str = "hybrid"
+    length: str = "balanced"
+    output_format: str = "text"
+    analysis: dict = {}
+    nltk_sentences: list = []
+    spacy_sentences: list = []
+    nltk_tokens: list = []
+    spacy_pos: list = []
+    nltk_pos: list = []
+    nltk_entities: list = []
+    spacy_entities: list = []
+    sentence_scores: dict = {}
+    spacy_tokens: list = []
     error: Optional[str] = None
 
 
@@ -388,17 +397,49 @@ def summarize(
         )
 
     try:
-        result = nlp_summarizer.summarizer(payload.text, payload.summary_ratio)
+        if payload.model == "hybrid":
+            result = nlp_summarizer.summarizer(payload.text, payload.summary_ratio)
+            result["model"] = payload.model
+            result["length"] = payload.length
+            result["output_format"] = payload.output_format
+            if payload.output_format == "notes":
+                result["summary"] = nlp_summarizer.to_notes(result["summary"])
+            result["analysis"] = {
+                "type": "extractive",
+                "output_format": payload.output_format,
+                "user_request": payload.user_request.strip() or None,
+                "selected_sentences": len(result.get("sentence_scores", {})),
+            }
+        else:
+            result = nlp_summarizer.transformer_summarize(
+                payload.text,
+                model=payload.model,
+                length=payload.length,
+                output_format=payload.output_format,
+                user_request=payload.user_request.strip(),
+            )
     except nlp_summarizer.SpacyModelMissingError as exc:
-        raise HTTPException(status_code=503, detail=str(exc))
-    except Exception:
-        # Never leak a raw traceback to the client.
+        logger.error("spaCy is not ready: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="The NLP engine is not ready. Install the spaCy model with: "
+            "python -m spacy download en_core_web_sm",
+        ) from exc
+    except (ModuleNotFoundError, ImportError, OSError, RuntimeError) as exc:
+        logger.exception("Summarization dependency/runtime failure")
+        raise HTTPException(
+            status_code=503,
+            detail=f"The selected summarizer is unavailable: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected summarization failure")
         raise HTTPException(
             status_code=500,
-            detail="Something went wrong while summarizing the text. Please try again.",
-        )
+            detail="The server could not complete summarization. Check the backend terminal logs and try again.",
+        ) from exc
 
     if result.get("error"):
-        raise HTTPException(status_code=400, detail=result["error"])
+        error_status = 503 if payload.model != "hybrid" else 400
+        raise HTTPException(status_code=error_status, detail=result["error"])
 
     return result

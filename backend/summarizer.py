@@ -1,39 +1,14 @@
-"""
-summarizer.py
-=========================================================
-Core NLP extractive text summarization module.
-
-This module is a direct refactor of the user's original
-`textsummary.py` script. The summarization ALGORITHM is
-UNCHANGED — the same NLTK + spaCy hybrid scoring pipeline
-(word frequency, POS weighting, NER weighting, sentence
-position, sentence length) is preserved exactly.
-
-What changed vs. the original script:
-  * The hard-coded sample `text` variable and the
-    "run on import" block at the bottom of the original
-    file were removed. The API now supplies user text.
-  * `ensure_nltk_resources()` and the spaCy model load are
-    wrapped so they run once, safely, and raise a clear,
-    catchable error instead of crashing the process if the
-    spaCy model is missing.
-  * Everything else (function names, scoring weights,
-    scoring formula, sentence selection logic) is identical
-    to the original file.
-=========================================================
-"""
-
 import re
 from heapq import nlargest
 from string import punctuation
 
 import nltk
+import numpy as np
 import spacy
 from nltk import ne_chunk, pos_tag
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tree import Tree
-
 
 # EXCEPTIONS
 
@@ -163,7 +138,7 @@ NER_WEIGHTS = {
     "PRODUCT": 1.0,
     "WORK_OF_ART": 1.0,
     "LAW": 1.0,
-    "NORP": 0.8
+    "NORP ": 0.8
 }
 
 
@@ -172,6 +147,12 @@ NER_WEIGHTS = {
 def clean_text(text):
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def to_notes(text):
+    """Convert a sentence summary into plain-text notes for copy/download."""
+    sentences = re.findall(r"[^.!?]+[.!?]+|[^.!?]+$", text.strip())
+    return "\n".join(f"- {sentence.strip()}" for sentence in sentences if sentence.strip())
 
 
 # NLTK NER EXTRACTION
@@ -288,10 +269,8 @@ def summarizer(text, summary_ratio=0.30):
         ):
             word_frequency[word_lower] = word_frequency.get(word_lower, 0) + 1
 
-    # -----------------------------------------------------
     # NORMALIZE WORD FREQUENCY
-    # -----------------------------------------------------
-
+    
     if word_frequency:
         max_frequency = max(word_frequency.values())
         for word in word_frequency:
@@ -449,3 +428,283 @@ def summarizer(text, summary_ratio=0.30):
         },
         "error": None
     }
+
+
+class TransformerModelError(RuntimeError):
+    """Raised when a transformer model/tokenizer fails to load or run."""
+
+
+_TRANSFORMER_MODEL_CACHE = {}
+
+
+def _load_transformer_cached(name, loader):
+    if name not in _TRANSFORMER_MODEL_CACHE:
+        try:
+            _TRANSFORMER_MODEL_CACHE[name] = loader()
+        except Exception as exc:  # noqa: BLE001 - surface as one clear error type
+            raise TransformerModelError(
+                f"Could not load transformer model '{name}': {exc}"
+            ) from exc
+    return _TRANSFORMER_MODEL_CACHE[name]
+
+
+def preload_transformer_models(models=("bert", "t5", "gpt2")):
+    """
+    Optional: call at startup (like initialize_nlp_engine() does for
+    the NLTK/spaCy pipeline) to download/load weights up front
+    instead of on the first request.
+    """
+    loaders = {"bert": _get_bert, "t5": _get_t5, "gpt2": _get_gpt2}
+    for name in models:
+        loaders[name]()
+
+
+# ---------- BERT: extractive, via sentence embeddings ----------
+
+def _get_bert():
+    def load():
+        from transformers import AutoModel, AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        model = AutoModel.from_pretrained("bert-base-uncased")
+        model.eval()
+        return tokenizer, model
+
+    return _load_transformer_cached("bert", load)
+
+
+def _bert_sentence_embeddings(sentences, tokenizer, model):
+    import torch
+
+    embeddings = []
+    with torch.no_grad():
+        for sentence in sentences:
+            inputs = tokenizer(
+                sentence, return_tensors="pt", truncation=True, max_length=512
+            )
+            outputs = model(**inputs)
+            vector = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
+            embeddings.append(vector)
+    return np.array(embeddings)
+
+
+def bert_extractive_summarize(text, num_sentences=3):
+    """
+    Extractive summary using BERT embeddings + KMeans clustering
+    (one representative sentence per cluster), restored to
+    original order. A second, embeddings-based way to pick
+    sentences - separate from the NLTK/spaCy scoring in Part 1.
+    """
+    from sklearn.cluster import KMeans
+
+    sentences = sent_tokenize(text)
+    if len(sentences) <= num_sentences:
+        return " ".join(sentences)
+
+    tokenizer, model = _get_bert()
+    embeddings = _bert_sentence_embeddings(sentences, tokenizer, model)
+
+    n_clusters = min(num_sentences, len(sentences))
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10).fit(embeddings)
+
+    selected_indices = []
+    for cluster_id in range(n_clusters):
+        cluster_indices = [
+            i for i, label in enumerate(kmeans.labels_) if label == cluster_id
+        ]
+        centroid = kmeans.cluster_centers_[cluster_id]
+        closest = min(
+            cluster_indices, key=lambda i: np.linalg.norm(embeddings[i] - centroid)
+        )
+        selected_indices.append(closest)
+
+    selected_indices.sort()
+    return " ".join(sentences[i] for i in selected_indices)
+
+
+# ---------- T5: abstractive ----------
+
+def _get_t5():
+    def load():
+        from transformers import pipeline
+
+        return pipeline("summarization", model="t5-small", tokenizer="t5-small")
+
+    return _load_transformer_cached("t5", load)
+
+
+def t5_summarize(text, max_length=150, min_length=30, output_format="text", user_request=""):
+    summarize_pipe = _get_t5()
+    request_hint = f" Follow this request: {user_request}." if user_request else ""
+    format_hint = " Write the result as bullet notes." if output_format == "notes" else ""
+    prefixed_text = "summarize:" + request_hint + format_hint + " " + text
+    input_words = len(text.split())
+    # Never request more output than the source can reasonably support, and
+    # always leave enough room for a complete result at each preset.
+    max_length = min(max_length, max(40, input_words))
+    min_length = min(min_length, max(20, max_length - 10))
+    result = summarize_pipe(
+        prefixed_text,
+        max_length=max_length,
+        min_length=min_length,
+        do_sample=False,
+        truncation=True,
+    )
+    return result[0]["summary_text"]
+
+
+# ---------- GPT-2: abstractive via prompting (experimental) ----------
+
+def _get_gpt2():
+    def load():
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        model = AutoModelForCausalLM.from_pretrained("gpt2")
+        model.eval()
+        return tokenizer, model
+
+    return _load_transformer_cached("gpt2", load)
+
+
+def gpt2_summarize(text, max_new_tokens=60, length="balanced", output_format="text", user_request=""):
+    import torch
+
+    tokenizer, model = _get_gpt2()
+    request_hint = f" Follow this request: {user_request}." if user_request else ""
+    format_hint = " Use one bullet point per idea." if output_format == "notes" else ""
+    prompt = (
+        "Write a concise, factual summary of the following text."
+        + request_hint
+        + format_hint
+        + " Keep the important names, dates, facts, and conclusions.\n\n"
+        + text.strip()
+        + "\n\nSummary:"
+    )
+
+    # GPT-2 has a 1,024-token context window. Reserve room for the answer
+    # instead of allowing a long input to make generation fail or truncate.
+    context_limit = min(getattr(model.config, "n_positions", 1024), 1024)
+    answer_tokens = min(max_new_tokens, max(32, context_limit // 5))
+    input_limit = context_limit - answer_tokens
+    inputs = tokenizer(
+        prompt,
+        return_tensors="pt",
+        truncation=True,
+        max_length=input_limit,
+    )
+
+    with torch.no_grad():
+        output_ids = model.generate(
+            **inputs,
+            max_new_tokens=answer_tokens,
+            do_sample=False,
+            no_repeat_ngram_size=3,
+            repetition_penalty=1.15,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
+    generated = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+    generated = generated.split("\n")[0].strip()
+
+    # Base GPT-2 sometimes repeats the prompt or produces no useful answer.
+    if len(generated.split()) < 5 or generated.lower().startswith("summary:"):
+        return _gpt2_fallback_summary(text, length, output_format)
+    return generated
+
+
+def _gpt2_fallback_summary(text, length="balanced", output_format="text"):
+    """Return a complete, faithful result when GPT-2 generates unusable text."""
+    sentences = sent_tokenize(clean_text(text))
+    if not sentences:
+        return ""
+
+    ratios = {"short": 0.2, "balanced": 0.4, "detailed": 0.7}
+    limit = max(1, min(len(sentences), round(len(sentences) * ratios.get(length, 0.4))))
+    summary = " ".join(sentences[:limit])
+    return to_notes(summary) if output_format == "notes" else summary
+
+
+# ---------- unified entry point ----------
+
+SUPPORTED_TRANSFORMER_MODELS = {"bert", "t5", "gpt2"}
+
+TRANSFORMER_LENGTHS = {
+    "short": {"bert": 0.25, "t5": (90, 20), "gpt2": 60},
+    "balanced": {"bert": 0.45, "t5": (160, 35), "gpt2": 100},
+    "detailed": {"bert": 0.70, "t5": (240, 60), "gpt2": 160},
+}
+
+
+def transformer_summarize(text, model="t5", **kwargs):
+    """
+    Single call site for the API layer. `model` is one of:
+      "bert" (extractive), "t5" (abstractive), "gpt2" (abstractive).
+    Returns a dict shaped like `summarizer()`'s output (summary +
+    error) so both pipelines can be handled the same way downstream.
+    """
+    if not text or not text.strip():
+        return {"summary": "", "model": model, "error": "Please provide some text."}
+
+    length = kwargs.pop("length", "balanced")
+    output_format = kwargs.pop("output_format", "text")
+    user_request = kwargs.pop("user_request", "")
+
+    if model not in SUPPORTED_TRANSFORMER_MODELS:
+        return {
+            "summary": "",
+            "model": model,
+            "error": f"Unknown model '{model}'. Choose from {sorted(SUPPORTED_TRANSFORMER_MODELS)}.",
+        }
+
+    if length not in TRANSFORMER_LENGTHS:
+        return {"summary": "", "model": model, "length": length, "error": "Unknown summary length."}
+
+    settings = TRANSFORMER_LENGTHS[length][model]
+
+    try:
+        if model == "bert":
+            sentence_count = len(sent_tokenize(clean_text(text)))
+            summary = bert_extractive_summarize(
+                text,
+                num_sentences=max(1, min(sentence_count, round(sentence_count * settings))),
+            )
+        elif model == "t5":
+            summary = t5_summarize(
+                text,
+                max_length=settings[0],
+                min_length=settings[1],
+                output_format=output_format,
+                user_request=user_request,
+            )
+        else:
+            summary = gpt2_summarize(
+                text,
+                max_new_tokens=settings,
+                length=length,
+                output_format=output_format,
+                user_request=user_request,
+            )
+        return {
+            "summary": summary,
+            "model": model,
+            "length": length,
+            "output_format": output_format,
+            "analysis": {
+                "type": "transformer",
+                "model": model,
+                "length": length,
+                "output_format": output_format,
+                "user_request": user_request or None,
+            },
+            "error": None,
+        }
+    except (TransformerModelError, ModuleNotFoundError, ImportError, OSError, RuntimeError) as exc:
+        return {
+            "summary": "",
+            "model": model,
+            "length": length,
+            "output_format": output_format,
+            "error": f"{model.upper()} is unavailable: {exc}",
+        }

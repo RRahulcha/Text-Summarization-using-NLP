@@ -29,18 +29,17 @@
 </header>
 
 <main>
-
   <!-- ============ HERO ============ -->
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__copy">
-        <p class="eyebrow">Extractive summarization · NLTK + spaCy</p>
+        <p class="eyebrow">Flexible summarization · classical NLP + transformers</p>
         <h1>NLP Text Summarizer</h1>
         <p class="hero__subtitle">Summarize long text using Natural Language Processing.</p>
         <p class="hero__desc">
           Paste an article, report, or transcript and get a concise, faithful summary —
-          built from sentences your text already contains, chosen by a hybrid scoring
-          pipeline across word frequency, part-of-speech, and named entities.
+          Choose a transparent hybrid NLP method or a transformer model, then review
+          the result with highlighted sentences and a built-in analysis view.
         </p>
         <div class="hero__cta">
           <a href="register.html" class="btn btn-primary">Create free account</a>
@@ -66,12 +65,10 @@
   <section id="about" class="section">
     <div class="container">
       <p class="eyebrow">How it works</p>
-      <h2>Every summary is built from your own sentences</h2>
+      <h2>One workspace, four ways to summarize</h2>
       <p class="section__lead">
-        This tool doesn't paraphrase or invent new sentences. It scores every sentence
-        in your text using a hybrid of NLTK and spaCy signals, then selects and
-        reorders the most important ones into a summary you can trust and verify
-        against the source.
+        Start with Hybrid NLP for a fast, explainable extractive summary. For a more
+        model-driven result, switch to BERT, T5, or GPT-2 from the dashboard.
       </p>
 
       <div class="steps">
@@ -116,6 +113,11 @@
           <h3>Extractive summarization</h3>
           <p>Sentences are ranked with a hybrid score — frequency, POS weight, entity weight, position, and length — and the top-ranked ones form your summary.</p>
         </div>
+        <div class="feature card">
+          <span class="chip chip--amber">Transformers</span>
+          <h3>BERT, T5 &amp; GPT-2</h3>
+          <p>Use pretrained transformer models for embedding-based selection or an abstractive summary.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -130,15 +132,17 @@
   </section>
 
 </main>
-
-<footer class="footer">
-  <div class="container footer__inner">
-    <span class="brand"><span class="brand__mark">⟨NLP⟩</span> Text Summarizer</span>
-    <p class="footer__note">Built with NLTK, spaCy &amp; FastAPI — a college NLP project.</p>
-  </div>
-</footer>
+ <footer class="footer">
+   <div class="container footer__inner">
+     <span class="brand"><span class="brand__mark">⟨NLP⟩</span> Text Summarizer</span>
+     <p class="footer__note">Built with NLTK, spaCy &amp; FastAPI — a college NLP project.</p>
+   </div>
+ </footer>
 
 <script src="js/config.js"></script>
 <script src="js/main.js"></script>
+
+
+
 </body>
 </html>

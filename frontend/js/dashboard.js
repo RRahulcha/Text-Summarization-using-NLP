@@ -7,6 +7,7 @@ const SUMMARIZE_URL = `${API_BASE}/api/summarize`;
 const LOGOUT_URL = `${API_BASE}/api/logout`;
 
 let lastSummaryText = "";
+let highlightsEnabled = true;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!requireAuth()) return;
@@ -14,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderUserName();
   setupCounts();
   setupButtons();
+  setupModelOptions();
   setupAnalysisToggle();
   setupTabs();
 });
@@ -78,13 +80,32 @@ function countWords(text) {
 function setupButtons() {
   document.getElementById("clearBtn").addEventListener("click", handleClear);
   document.getElementById("summarizeBtn").addEventListener("click", handleSummarize);
+  document.getElementById("highlightBtn").addEventListener("click", toggleHighlights);
   document.getElementById("copyBtn").addEventListener("click", handleCopy);
   document.getElementById("downloadBtn").addEventListener("click", handleDownload);
   document.getElementById("logoutBtn").addEventListener("click", handleLogout);
 }
 
+function setupModelOptions() {
+  const modelSelect = document.getElementById("summaryModel");
+  const ratioControl = document.getElementById("ratioControl");
+
+  modelSelect.addEventListener("change", () => {
+    ratioControl.hidden = false;
+  });
+}
+
+function getSummaryLength() {
+  return {
+    "0.2": "short",
+    "0.3": "balanced",
+    "0.5": "detailed",
+  }[document.getElementById("summaryRatio").value];
+}
+
 function handleClear() {
   const textarea = document.getElementById("originalText");
+  document.getElementById("userRequest").value = "";
   textarea.value = "";
   textarea.dispatchEvent(new Event("input"));
   resetSummaryPanel();
@@ -99,6 +120,8 @@ function resetSummaryPanel() {
   document.getElementById("copyBtn").disabled = true;
   document.getElementById("downloadBtn").disabled = true;
   document.getElementById("analysisSection").hidden = true;
+  document.getElementById("summaryModelBadge").textContent = "Hybrid NLP";
+  document.getElementById("summaryAnalysis").hidden = true;
   lastSummaryText = "";
 }
 
@@ -106,6 +129,10 @@ async function handleSummarize() {
   const textarea = document.getElementById("originalText");
   const text = textarea.value.trim();
   const ratio = parseFloat(document.getElementById("summaryRatio").value);
+  const model = document.getElementById("summaryModel").value;
+  const length = getSummaryLength();
+  const outputFormat = document.getElementById("outputFormat").value;
+  const userRequest = document.getElementById("userRequest").value.trim();
   const summarizeBtn = document.getElementById("summarizeBtn");
   const output = document.getElementById("summaryOutput");
 
@@ -122,7 +149,7 @@ async function handleSummarize() {
   }
 
   summarizeBtn.disabled = true;
-  summarizeBtn.textContent = "Analyzing text...";
+  summarizeBtn.textContent = model === "hybrid" ? "Analyzing text..." : "Loading model...";
   output.classList.add("is-loading");
   output.innerHTML = `<span>Analyzing text...</span>`;
 
@@ -133,7 +160,7 @@ async function handleSummarize() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${getToken()}`,
       },
-      body: JSON.stringify({ text, summary_ratio: ratio }),
+      body: JSON.stringify({ text, summary_ratio: ratio, model, length, output_format: outputFormat, user_request: userRequest }),
     });
 
     if (response.status === 401) {
@@ -176,12 +203,57 @@ function displaySummary(data) {
     return;
   }
 
-  output.innerHTML = `<p>${escapeHtml(lastSummaryText)}</p>`;
+  renderSummaryText(output, lastSummaryText, data.sentence_scores || {});
+  document.getElementById("summaryModelBadge").textContent = `${modelLabel(data.model)} · ${data.output_format || "text"}`;
+  renderSummaryAnalysis(data);
   document.getElementById("summaryCount").textContent = `${countWords(lastSummaryText)} words`;
   document.getElementById("copyBtn").disabled = false;
   document.getElementById("downloadBtn").disabled = false;
 
   renderAnalysis(data);
+}
+
+function renderSummaryAnalysis(data) {
+  const analysis = document.getElementById("summaryAnalysis");
+  const details = data.analysis || {};
+  const request = details.user_request ? ` Request: ${details.user_request}.` : "";
+  analysis.textContent = `${modelLabel(data.model)} · ${data.length || "balanced"} · ${data.output_format || "text"} · ${details.type || "summary"}.${request}`;
+  analysis.hidden = false;
+}
+
+function modelLabel(model) {
+  return {
+    hybrid: "Hybrid NLP",
+    bert: "BERT",
+    t5: "T5",
+    gpt2: "GPT-2",
+  }[model] || "Summary";
+}
+
+function toggleHighlights() {
+  highlightsEnabled = !highlightsEnabled;
+  const button = document.getElementById("highlightBtn");
+  button.setAttribute("aria-pressed", String(highlightsEnabled));
+  button.textContent = highlightsEnabled ? "Highlights On" : "Highlights Off";
+
+  const marks = document.querySelectorAll("#summaryOutput mark.summary-highlight");
+  marks.forEach((mark) => mark.classList.toggle("is-hidden", !highlightsEnabled));
+}
+
+function renderSummaryText(output, text, sentenceScores) {
+  const paragraph = document.createElement("p");
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+
+  sentences.forEach((sentence) => {
+    const mark = document.createElement("mark");
+    mark.className = "summary-highlight";
+    mark.classList.toggle("is-hidden", !highlightsEnabled);
+    mark.title = "Selected as an important sentence by the NLP scoring model";
+    mark.textContent = sentence;
+    paragraph.appendChild(mark);
+  });
+
+  output.replaceChildren(paragraph);
 }
 
 async function handleCopy() {
